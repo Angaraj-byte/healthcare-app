@@ -46,12 +46,15 @@ export default function DashboardPage() {
   // Fetch recent doctor visits
   useEffect(() => {
     if (!user) return;
+    
+    // Capture user.id as a stable, non-null constant for the async closure
+    const userId = user.id;
 
     async function fetchRecentVisits() {
       const { data, error } = await supabase
         .from('doctor_visits')
         .select('id, doctor_name, hospital_name, visit_date, diagnosis')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .order('visit_date', { ascending: false })
         .limit(3);
 
@@ -78,6 +81,7 @@ export default function DashboardPage() {
     e.preventDefault();
     if (!user) return;
 
+    const userId = user.id; // Local copy to protect typescript type check
     const allergiesArr = allergiesInput.split(',').map((item) => item.trim()).filter(Boolean);
     const chronicArr = chronicInput.split(',').map((item) => item.trim()).filter(Boolean);
 
@@ -88,7 +92,7 @@ export default function DashboardPage() {
         allergies: allergiesArr,
         chronic_diseases: chronicArr,
       })
-      .eq('id', user.id);
+      .eq('id', userId);
 
     if (!error) {
       await refreshProfile();
@@ -148,7 +152,7 @@ export default function DashboardPage() {
         {/* Welcome Banner */}
         <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-150 dark:border-slate-700 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-black text-slate-950 dark:text-white">
+            <h1 className="text-2xl font-black text-slate-955 dark:text-white">
               Welcome back, {profile?.full_name || 'Patient'}
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -157,7 +161,7 @@ export default function DashboardPage() {
           </div>
           <button
             onClick={() => setIsEditingProfile(true)}
-            className="flex items-center gap-2 text-xs font-semibold px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-650 text-slate-800 dark:text-slate-200 rounded-xl transition"
+            className="flex items-center gap-2 text-xs font-semibold px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-655 text-slate-800 dark:text-slate-200 rounded-xl transition"
           >
             <Edit2 className="h-3.5 w-3.5" /> Edit Health Info
           </button>
