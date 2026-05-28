@@ -1,21 +1,38 @@
 import { createClient } from '@supabase/supabase-js';
 import { Pill, UserCheck, Calendar, FileText, AlertTriangle } from 'lucide-react';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-// Initialize bypass-RLS context safely using basic anon client targeting database RPC execution.
-// Database function controls inner auth check rules.
-const supabaseServer = createClient(supabaseUrl, supabaseAnonKey);
-
 interface SharePageProps {
-  params: {
-    token: string;
-  };
+  // Accommodates Next.js asynchronous param expectations safely
+  params: Promise<{ token: string }> | { token: string };
 }
 
 export default async function SharedMedicalReportPage({ params }: SharePageProps) {
-  const { token } = params;
+  // Safely resolve params whether synchronous (Next 13/14) or asynchronous (Next 15+)
+  const resolvedParams = await params;
+  const token = resolvedParams.token;
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  // Build guard: Prevent compilation crash if environment variables are evaluated during pre-render
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex justify-center items-center p-6">
+        <div className="max-w-md w-full bg-white dark:bg-slate-800 p-8 rounded-3xl border border-amber-200 text-center space-y-4">
+          <div className="mx-auto bg-amber-100 dark:bg-amber-950 text-amber-600 h-16 w-16 rounded-full flex justify-center items-center">
+            <AlertTriangle className="h-10 w-10" />
+          </div>
+          <h1 className="text-xl font-bold text-slate-950 dark:text-white">Environment Error</h1>
+          <p className="text-sm text-slate-500">
+            Supabase environment variables are missing. Please ensure your Vercel settings contain valid NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY keys.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Safe lazy instantiation inside render scope
+  const supabaseServer = createClient(supabaseUrl, supabaseAnonKey);
 
   // Query PostgreSQL secure definer function RPC
   const { data, error } = await supabaseServer.rpc('get_shared_medical_data', {
@@ -38,14 +55,14 @@ export default async function SharedMedicalReportPage({ params }: SharePageProps
     );
   }
 
-  const { profile, medicines, doctor_visits, reports } = data;
+  const { profile, medicines, doctor_visits } = data;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-8">
       <div className="max-w-5xl mx-auto space-y-8">
         
         {/* Top Verification Bar */}
-        <div className="bg-emerald-650 text-white p-6 rounded-3xl shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="bg-emerald-600 text-white p-6 rounded-3xl shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-white animate-pulse"></span>
@@ -53,7 +70,7 @@ export default async function SharedMedicalReportPage({ params }: SharePageProps
             </div>
             <h1 className="text-2xl font-black mt-1">Clinical Portfolio: {profile?.full_name}</h1>
           </div>
-          <div className="bg-emerald-700/50 px-4 py-2 rounded-xl text-xs font-semibold border border-emerald-500/20">
+          <div className="bg-emerald-705/50 px-4 py-2 rounded-xl text-xs font-semibold border border-emerald-500/20">
             Read-Only Verification active
           </div>
         </div>
@@ -65,11 +82,11 @@ export default async function SharedMedicalReportPage({ params }: SharePageProps
             <p className="text-xl font-black text-slate-900 dark:text-white">{profile?.blood_group || 'Unknown'}</p>
           </div>
           <div>
-            <span className="text-xs text-slate-400 block mb-1 uppercase tracking-wide font-semibold font-mono">Critical Allergies</span>
+            <span className="text-xs text-slate-400 block mb-1 uppercase tracking-wide font-semibold">Critical Allergies</span>
             <div className="flex flex-wrap gap-1 mt-1">
               {profile?.allergies && profile.allergies.length > 0 ? (
                 profile.allergies.map((alg: string, idx: number) => (
-                  <span key={idx} className="bg-rose-100 text-rose-800 text-xs px-2 py-0.5 rounded font-medium">{alg}</span>
+                  <span key={idx} className="bg-rose-100 dark:bg-rose-950/40 text-rose-800 dark:text-rose-350 text-xs px-2.5 py-1 rounded-lg font-semibold">{alg}</span>
                 ))
               ) : (
                 <span className="text-sm text-slate-400 font-medium">None Listed</span>
@@ -81,10 +98,10 @@ export default async function SharedMedicalReportPage({ params }: SharePageProps
             <div className="flex flex-wrap gap-1 mt-1">
               {profile?.chronic_diseases && profile.chronic_diseases.length > 0 ? (
                 profile.chronic_diseases.map((dis: string, idx: number) => (
-                  <span key={idx} className="bg-amber-100 text-amber-850 text-xs px-2 py-0.5 rounded font-medium">{dis}</span>
+                  <span key={idx} className="bg-amber-100 dark:bg-amber-950/45 text-amber-800 dark:text-amber-250 text-xs px-2.5 py-1 rounded-lg font-semibold">{dis}</span>
                 ))
               ) : (
-                <span className="text-sm text-slate-400 font-medium font-sans">No Chronic Diseases Listed</span>
+                <span className="text-sm text-slate-400 font-medium">No Chronic Diseases Listed</span>
               )}
             </div>
           </div>
@@ -106,7 +123,7 @@ export default async function SharedMedicalReportPage({ params }: SharePageProps
               medicines.map((med: any) => (
                 <div key={med.id} className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-700">
                   <h3 className="font-bold text-slate-900 dark:text-white text-base">{med.name}</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">Dosage details: {med.dosage} - {med.frequency}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Dosage details: {med.dosage} — {med.frequency}</p>
                   <p className="text-xs text-slate-400 mt-2">Instruction window: {med.food_instructions} (Schedule: {med.timing?.join(', ')})</p>
                 </div>
               ))
@@ -121,7 +138,7 @@ export default async function SharedMedicalReportPage({ params }: SharePageProps
           <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Calendar className="text-emerald-500" /> Professional Clinical Timeline & Visited Logs
           </h2>
-          <div className="border-l-2 border-slate-150 dark:border-slate-700 pl-6 ml-3 space-y-6 relative">
+          <div className="border-l-2 border-slate-150 dark:border-slate-705 pl-6 ml-3 space-y-6 relative">
             {doctor_visits && doctor_visits.length > 0 ? (
               doctor_visits.map((visit: any) => (
                 <div key={visit.id} className="relative space-y-1">
